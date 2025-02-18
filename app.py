@@ -30,13 +30,13 @@ if 'alert_poses' not in st.session_state:
 # ---------------------
 # Create Tabbed Layout
 # ---------------------
-tabs = st.tabs(["Live Stream", "Logs", "Alerts", "Settings"])
+tabs = st.tabs(["라이브", "로그", "알림", "설정"])
 
 # ---------------------
-# Live Stream Tab
+# 라이브 (Live Stream) Tab
 # ---------------------
 with tabs[0]:
-    st.header("Live Stream")
+    st.header("라이브")
     st.write("라이브 웹캠 피드를 시뮬레이션합니다. 실제 제품에서는 실제 카메라 스트림이 표시됩니다.")
 
     # Placeholder for the video feed area
@@ -46,7 +46,7 @@ with tabs[0]:
     # Replace this with your actual webcam feed or video stream.
     frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     image = Image.fromarray(frame)
-    video_placeholder.image(image, caption="Simulated Live Feed", use_column_width=True)
+    video_placeholder.image(image, caption="Simulated Live Feed", use_container_width=True)
 
     # --- ResNet Inference Integration ---
     # Replace the random detection below with your ResNet model inference.
@@ -72,17 +72,17 @@ with tabs[0]:
         st.session_state.alerts.append(alert_message)
 
     # Display the five most recent log entries
-    st.subheader("Recent Detections")
+    st.subheader("활동")
     if not st.session_state.log_df.empty:
         st.dataframe(st.session_state.log_df.tail(5).reset_index(drop=True))
     else:
-        st.write("No detections yet.")
+        st.write("아직 활동이 없습니다.")
 
 # ---------------------
-# Logs Tab
+# 로그 (Logs) Tab
 # ---------------------
 with tabs[1]:
-    st.header("Logs")
+    st.header("로그")
     st.write("모든 감지 기록:")
     if not st.session_state.log_df.empty:
         st.dataframe(st.session_state.log_df.reset_index(drop=True))
@@ -90,10 +90,10 @@ with tabs[1]:
         st.write("로그가 없습니다.")
 
 # ---------------------
-# Alerts Tab
+# 알림 (Alerts) Tab
 # ---------------------
 with tabs[2]:
-    st.header("Alerts")
+    st.header("알림")
     st.write("특정 포즈 감지 시 경고를 표시합니다.")
 
     # Multi-select widget for choosing which poses to monitor
@@ -111,23 +111,23 @@ with tabs[2]:
         st.write("아직 경고가 없습니다.")
 
 # ---------------------
-# Settings Tab
+# 설정 (Settings) Tab
 # ---------------------
 with tabs[3]:
-    st.header("Settings")
+    st.header("설정")
     st.write("검출 시스템 환경 설정")
 
     # Help/FAQ in Korean
     with st.expander("도움말 / 자주 묻는 질문 (FAQs)"):
         st.write("""
         **Q1: 라이브 스트림은 어떻게 시작하나요?**  
-        A1: "Live Stream" 탭에서 실제 카메라 스트림을 연결하면, 자동으로 영상이 표시되고 감지 결과가 업데이트됩니다.  
+        A1: "라이브" 탭에서 실제 카메라 스트림을 연결하면, 자동으로 영상이 표시되고 감지 결과가 업데이트됩니다.  
         
         **Q2: 특정 포즈에 대한 알림을 어떻게 설정하나요?**  
-        A2: "Alerts" 탭에서 "알림을 받을 포즈 선택" 항목에서 원하는 포즈를 선택하세요. 시스템이 해당 포즈를 감지하면, "Triggered Alerts" 테이블에 경고가 표시됩니다.  
+        A2: "알림" 탭에서 "알림을 받을 포즈 선택" 항목에서 원하는 포즈를 선택하세요. 시스템이 해당 포즈를 감지하면, "Triggered Alerts" 테이블에 경고가 표시됩니다.  
         
         **Q3: 전체 로그는 어디에서 볼 수 있나요?**  
-        A3: "Logs" 탭에서 모든 감지 기록을 확인할 수 있습니다.  
+        A3: "로그" 탭에서 모든 감지 기록을 확인할 수 있습니다.  
         
         **Q4: 기타 도움이 필요하면 어디서 찾을 수 있나요?**  
         A4: 시스템 관리자에게 문의하거나 추가 문서를 참조하세요.
