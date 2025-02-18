@@ -56,7 +56,7 @@ with tab_logs:
     with col2:
         log = st.session_state['log']
         groups = log.groupby('날짜')
-        for group in groups[::-1]:
+        for group in groups:
             date, df = group
             with st.expander(date.strftime(r'%Y년 %m월 %d일')):
                 st.dataframe(df.drop(columns=['날짜']), use_container_width=True, hide_index=True)
