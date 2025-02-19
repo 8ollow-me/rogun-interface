@@ -1,134 +1,125 @@
-# %%
+import os
+import sys
+import pandas as pd
+from PIL import Image
 import streamlit as st
-import cv2
 from datetime import datetime
+from random import randint
+import base64
 
-# 페이지 설정
-st.set_page_config(page_title="반려동물 홈캠", layout="wide")
+NONE = '행동 없음'
+BEHAVIORS = [
+    "BODYLOWER", "BODYSCRATCH", "BODYSHAKE", "FEETUP", "FOOTUP",
+    "HEADING", "LYING", "MOUNTING", "SIT", "TAILING",
+    "TAILLOW", "TURN", "WALKRUN"
+]
 
-# 제목
-st.title("🐾 반려동물 홈캠 서비스")
+def get_image_base64(image_path):
+    """이미지를 base64로 인코딩"""
+    with open(image_path, "rb") as img_file:
+        encoded_string = base64.b64encode(img_file.read()).decode()
+        return f"data:image/jpeg;base64,{encoded_string}"
 
-# 페이지 선택 버튼을 오른쪽 정렬 및 좌우 배치
-page_selection_style = """
-    <style>
-    div[role="radiogroup"] {
-        display: flex;
-        justify-content: flex-end;
-    }
-    div[role="radiogroup"] label {
-        margin-left: 10px; /* 버튼 간 간격 */
-    }
-    </style>
-"""
-st.markdown(page_selection_style, unsafe_allow_html=True)
-page = st.radio("", ["Main", "Logs"], horizontal=True, label_visibility="collapsed")
+def get_row(time: datetime, behavior: str):
+    """데이터프레임에 새로운 행 추가"""
+    return pd.DataFrame({
+        '날짜': [time.strftime('%Y-%m-%d')],
+        '시간': [time.strftime('%H:%M:%S')],
+        '행동': [behavior],
+        '캡쳐': [get_image_base64('강아지3.jpg')]
+    })
 
-# 세션 상태 초기화
-if "webcam_running" not in st.session_state:
-    st.session_state["webcam_running"] = False
+# 세션 데이터 초기화
+if 'log' not in st.session_state:
+    st.session_state['log'] = pd.DataFrame(columns=['날짜', '시간', '행동', '캡쳐'])
+if 'noti' not in st.session_state:
+    st.session_state['noti'] = []
+if 'behavior' not in st.session_state:
+    st.session_state['behavior'] = NONE
+if 'search_filter' not in st.session_state:
+    st.session_state['search_filter'] = []
 
-# 웹캠 및 로그 관련 함수
-def get_webcam_height():
-    if cap.isOpened():
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        return height
-    else:
-        return 240
+# 메인 UI
+st.set_page_config(layout="wide")
+    
+tab_overview, tab_logs, tab_noti = st.tabs(['🔴 실시간 영상', '📋 전체 활동 기록',  '🔔 알림 설정'])
 
-def update_log(message):
-    global log_messages
-    log_messages.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {message}")
-    log_messages = log_messages[-5:]
-    log_placeholder.markdown(f"""
-        <div style="
-            background-color: #FFFF00;
-            padding: 10px;
-            border-radius: 5px;
-            overflow-y: scroll;
-            height: {webcam_height}px;
-            ">
-            {'<br>'.join(log_messages)}
-        </div>
-    """, unsafe_allow_html=True)
+with tab_overview:
+    col1, col2 = st.columns([25, 10], vertical_alignment='top')
+    with col1:
+        st.image(image='강아지3.jpg', use_column_width=True)
+    with col2:
+        st.markdown('### 최근에 감지된 활동')
+        st.dataframe(
+            st.session_state['log'].head(10),
+            column_config={
+                "날짜": st.column_config.TextColumn("날짜"),
+                "시간": st.column_config.TextColumn("시간"),
+                "행동": st.column_config.TextColumn("행동"),
+                "캡쳐": st.column_config.ImageColumn(
+                    "캡쳐",
+                    help="촬영된 사진",
+                    width="medium"
+                )
+            },
+            hide_index=True,
+            use_container_width=True
+        )
 
-# 로그 메시지 리스트
-log_messages = []
+with tab_logs:
+    st.markdown('### 전체 활동 기록')
+    col1, col2 = st.columns([1, 4], vertical_alignment='top')
+    with col1:
+        st.image(image='강아지3.jpg', use_container_width=True)
+    with col2:
+        with st.expander('검색 필터'):
+            st.session_state['search_filter'] = st.multiselect(
+                label='검색 필터',
+                options=[NONE] + BEHAVIORS,
+                default=st.session_state['noti'],
+                placeholder='특정 행동을 검색하세요.',
+                label_visibility='collapsed'
+            )
 
-# 웹캠 열기
-cap = cv2.VideoCapture(0)  # 기본 웹캠 사용
+        filtered_log = st.session_state['log']
+        if st.session_state['search_filter']:
+            filtered_log = filtered_log[filtered_log['행동'].isin(st.session_state['search_filter'])]
+        
+        st.dataframe(
+            filtered_log,
+            column_config={
+                "날짜": st.column_config.TextColumn("날짜"),
+                "시간": st.column_config.TextColumn("시간"),
+                "행동": st.column_config.TextColumn("행동"),
+                "캡쳐": st.column_config.ImageColumn(
+                    "캡쳐",
+                    help="촬영된 사진",
+                    width="medium"
+                )
+            },
+            hide_index=True,
+            use_container_width=True
+        )
 
-if not cap.isOpened():
-    st.error("웹캠을 찾을 수 없습니다. 연결을 확인하세요!")
-else:
-    if page == "Main":
-        # 메인 페이지 레이아웃
-        col1, col2 = st.columns([3, 1])  # 웹캠:로그창 = 3:1 비율
-        webcam_height = get_webcam_height()
+with tab_noti:
+    st.markdown('### 알림 설정')
+    st.session_state['noti'] = st.multiselect(
+        label='반려견이 특정 행동을 했을 때 알림을 받습니다.',
+        options=BEHAVIORS,
+        default=st.session_state['noti'],
+        placeholder='행동을 선택하세요.'
+    )
 
-        with col1:
-            st.subheader("웹캠")
-            stframe = st.empty()
-
-        with col2:
-            st.subheader("활동")
-            log_placeholder = st.empty()
-
-            st.markdown(f"""
-                <style>
-                    [data-testid="stColumn"]:nth-of-type(2) {{
-                        background-color: #FFFF00;
-                        height: {webcam_height}px;
-                    }}
-                </style>
-                """, unsafe_allow_html=True)
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                st.error("카메라에서 프레임을 읽을 수 없습니다!")
-                break
-
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            with col1:  # 웹캠 영역에 표시
-                stframe.image(frame_rgb, channels="RGB", use_container_width=True)
-
-    elif page == "Logs":
-        # 로그 페이지 레이아웃
-        col1, col2 = st.columns([1, 3])  # 웹캠:로그창 = 1:3 비율
-        webcam_height = get_webcam_height()
-
-        with col1:
-            st.subheader("웹캠")
-            stframe = st.empty()
-
-        with col2:
-            st.subheader("활동")
-            log_placeholder = st.empty()
-
-            st.markdown(f"""
-                <style>
-                    [data-testid="stColumn"]:nth-of-type(2) {{
-                        background-color: #FFFF00;
-                        height: {webcam_height}px;
-                    }}
-                    .log-box {{
-                        height: 600px;
-                    }}
-                </style>
-                """, unsafe_allow_html=True)
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                st.error("카메라에서 프레임을 읽을 수 없습니다!")
-                break
-
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            with col1:  # 웹캠 영역에 표시
-                stframe.image(frame_rgb, channels="RGB", use_container_width=True)
-
-    cap.release()
-
-
-
+# 테스트 버튼
+if st.button(label='테스트', key='1'):
+    try:
+        # 랜덤한 행동 선택
+        behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
+        # 새로운 행 추가
+        new_row = get_row(datetime.now(), behavior)
+        # 로그에 추가
+        st.session_state['log'] = pd.concat([new_row, st.session_state['log']], ignore_index=True)
+        st.session_state['behavior'] = behavior
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error in test button: {e}")
