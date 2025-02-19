@@ -1,11 +1,15 @@
 import os
-import sys
+import cv2
+import base64
 import pandas as pd
-from PIL import Image
 import streamlit as st
 from datetime import datetime
 from random import randint
-import base64
+from PIL import Image
+
+# 폴더 생성
+IMAGE_FOLDER = "images"
+os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
 NONE = '행동 없음'
 BEHAVIORS = [
@@ -20,13 +24,27 @@ def get_image_base64(image_path):
         encoded_string = base64.b64encode(img_file.read()).decode()
         return f"data:image/jpeg;base64,{encoded_string}"
 
-def get_row(time: datetime, behavior: str):
+def capture_image():
+    """웹캠에서 이미지를 캡처하고 images 폴더에 저장"""
+    cap = cv2.VideoCapture(0)  # 웹캠 열기
+    ret, frame = cap.read()  # 한 프레임 캡처
+    cap.release()  # 웹캠 해제
+
+    if ret:
+        filename = f"{IMAGE_FOLDER}/capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+        cv2.imwrite(filename, frame)  # 이미지 저장
+        return filename
+    else:
+        st.error("📷 캡처 실패! 웹캠을 확인하세요.")
+        return None
+
+def get_row(time: datetime, behavior: str, image_path: str):
     """데이터프레임에 새로운 행 추가"""
     return pd.DataFrame({
         '날짜': [time.strftime('%Y-%m-%d')],
         '시간': [time.strftime('%H:%M:%S')],
         '행동': [behavior],
-        '캡쳐': [get_image_base64('강아지3.jpg')]
+        '캡쳐': [get_image_base64(image_path)]
     })
 
 # 세션 데이터 초기화
@@ -84,7 +102,7 @@ with tab_logs:
         filtered_log = st.session_state['log']
         if st.session_state['search_filter']:
             filtered_log = filtered_log[filtered_log['행동'].isin(st.session_state['search_filter'])]
-        
+
         st.dataframe(
             filtered_log,
             column_config={
@@ -110,16 +128,15 @@ with tab_noti:
         placeholder='행동을 선택하세요.'
     )
 
-# 테스트 버튼
-if st.button(label='테스트', key='1'):
+# 📸 캡처 및 테스트 버튼
+if st.button(label='📸 캡처 & 테스트', key='1'):
     try:
-        # 랜덤한 행동 선택
-        behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
-        # 새로운 행 추가
-        new_row = get_row(datetime.now(), behavior)
-        # 로그에 추가
-        st.session_state['log'] = pd.concat([new_row, st.session_state['log']], ignore_index=True)
-        st.session_state['behavior'] = behavior
-        st.rerun()
+        image_path = capture_image()  # 웹캠에서 캡처 후 저장
+        if image_path:
+            behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
+            new_row = get_row(datetime.now(), behavior, image_path)
+            st.session_state['log'] = pd.concat([new_row, st.session_state['log']], ignore_index=True)
+            st.session_state['behavior'] = behavior
+            st.rerun()
     except Exception as e:
-        st.error(f"Error in test button: {e}")
+        st.error(f"오류 발생: {e}")
