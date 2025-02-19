@@ -9,6 +9,10 @@ BEHAVIORS = [
     "HEADING", "LYING", "MOUNTING", "SIT", "TAILING",
     "TAILLOW", "TURN", "WALKRUN"
 ]
+BEEPS = {
+    '알림음 끄기': '',
+    '기본 알림음': 'https://www.soundjay.com/buttons/sounds/beep-07a.mp3'
+}
 
 
 def get_last_image():
@@ -32,10 +36,8 @@ if 'search_filter' not in st.session_state:
     st.session_state['search_filter'] = []
 if 'noti_filter' not in st.session_state:
     st.session_state['noti_filter'] = []
-if 'play_noti' not in st.session_state:
-    st.session_state['play_noti'] = False
-if 'reset_noti' not in st.session_state:
-    st.session_state['reset_noti'] = 0
+if 'beep' not in st.session_state:
+    st.session_state['beep'] = list(BEEPS.keys())[0]
 
 
 # =======
@@ -82,7 +84,12 @@ with tab_noti:
         placeholder='행동을 선택하세요.'
     )
     with st.expander('알림음 설정'):
-        st.audio('resources/coin.mp3', start_time=st.session_state['reset_noti'], autoplay=st.session_state['play_noti'])
+        st.session_state['beep'] = st.radio(
+            label='알림음 설정', 
+            options=list(BEEPS.keys()),
+            index=1,
+            label_visibility='collapsed'
+        )
 
 
 # ==================
@@ -161,12 +168,10 @@ def add_log(time, behavior, image):
     )
     st.session_state['behavior'] = behavior
     if behavior in st.session_state['noti_filter']:
-        st.session_state['reset_noti'] = 0
-        st.session_state['play_noti'] = True
-    else:
-        st.session_state['reset_noti'] = 0
-        st.session_state['play_noti'] = False
-    print(st.session_state['log'])
+        st.markdown(
+            f'<audio autoplay><source src="{BEEPS[st.session_state['beep']]}" type="audio/mpeg"></audio>',
+            unsafe_allow_html=True
+        )
     on_add_log()
     
 def on_add_log():
@@ -184,4 +189,4 @@ import time
 while True:
     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
     add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
-    time.sleep(1)
+    time.sleep(5)
