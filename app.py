@@ -104,10 +104,10 @@ with tab_noti:
     )
 
 if st.button(label='테스트', key='1'):
-    # Generate a random behavior if the current behavior is '행동 없음', otherwise reset to '행동 없음'
+    # 랜덤 행동 선택
     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
     
-    # Add log entry for the detected behavior
+    # 로그 추가
     add_log(datetime.now(), behavior, '/Desktop/AI/rogun-interface/images/rogun.png')
     st.session_state['behavior'] = behavior
 
