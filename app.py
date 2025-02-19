@@ -104,7 +104,23 @@ with tab_noti:
     )
 
 if st.button(label='테스트', key='1'):
+    # Generate a random behavior if the current behavior is '행동 없음', otherwise reset to '행동 없음'
     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
-    add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
+    
+    # Add log entry for the detected behavior
+    add_log(datetime.now(), behavior, '/Desktop/AI/rogun-interface/images/rogun.png')
     st.session_state['behavior'] = behavior
+
+    # 알림 설정에 있으면 소리 알림
+    if behavior in st.session_state['noti_filter']:
+        alert_sound_url = "https://www.soundjay.com/buttons/sounds/button-12.mp3"  # 원하는 사운드로 여기만 바꾸면 됩니다
+        st.markdown(
+            f"""
+            <audio autoplay>
+                <source src="{alert_sound_url}" type="audio/mpeg">
+            </audio>
+            """,
+            unsafe_allow_html=True
+        )
+    
     st.rerun()
