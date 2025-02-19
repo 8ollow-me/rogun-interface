@@ -1,4 +1,6 @@
 import sys
+import beepy
+import threading
 import pandas as pd
 from PIL import Image
 import streamlit as st
@@ -33,12 +35,20 @@ if 'search_filter' not in st.session_state:
 if 'noti_filter' not in st.session_state:
     st.session_state['noti_filter'] = []
 
+
 # 이벤트
+def playsound():
+    # beepy.beep('coin')
+    pass
+
+
 def add_log(time, behavior, image):
     st.session_state['log'] = pd.concat(
         [get_row(time, behavior, image), st.session_state['log']],
         ignore_index=True
     )
+    threading.Thread(target=playsound, daemon=True).start()
+
 
 # 뷰
 st.set_page_config(layout="wide")
@@ -51,20 +61,33 @@ with tab_overview:
         st.image(image=get_last_image(), use_container_width=True)
     with col2:
         st.markdown('### 최근에 감지된 활동')
+        log = st.session_state['log']
         st.dataframe(
-            st.session_state['log'][:10],
+            log[:10],
             column_config={
                 "캡쳐": st.column_config.ImageColumn("캡쳐")
             },
             use_container_width=True, 
             hide_index=True
         )
+        if log.empty or log.loc[0, '행동'] == NONE:
+            st.info(f'행동이 감지되지 않았습니다.')
+        elif log.loc[0,'행동'] in st.session_state['noti_filter']:
+            st.warning(f'🔔 행동이 감지됐습니다: **{log.loc[0,'행동']}**')
+        elif log.loc[0,'행동'] != NONE:
+            st.info(f'행동이 감지됐습니다: **{log.loc[0,'행동']}**')
 
 with tab_logs:
     st.markdown('### 전체 활동 기록')
     col1, col2 = st.columns([1, 4], vertical_alignment='top')
     with col1:
         st.image(image=get_last_image(), use_container_width=True)
+        if log.empty or log.loc[0, '행동'] == NONE:
+            st.info(f'🐶 {NONE if log.empty else log.loc[0,'행동']}')
+        elif log.loc[0, '행동'] in st.session_state['noti_filter']:
+            st.warning(f'🐕 **{log.loc[0,'행동']}**')
+        else:
+            st.info(f'🐕 {NONE if log.empty else log.loc[0,'행동']}')
     with col2:
         with st.expander('검색 필터'):
             st.session_state['search_filter'] = st.multiselect(
@@ -103,7 +126,7 @@ with tab_noti:
         default=st.session_state['noti'],
         placeholder='행동을 선택하세요.'
     )
-
+    
 if st.button(label='테스트', key='1'):
     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
     add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
