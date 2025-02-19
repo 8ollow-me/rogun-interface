@@ -51,7 +51,6 @@ with tab_overview:
         st.image(image=get_last_image(), use_container_width=True)
     with col2:
         st.markdown('### 최근에 감지된 활동')
-        log = st.session_state['log']
         log_dataframe_brief = st.empty()
         behavior_bar_large = st.empty()
     test = col2
@@ -90,6 +89,7 @@ with tab_noti:
 # 컴포넌트 갱신 함수
 # ==================
 def update_log_dataframe_brief():
+    log = st.session_state['log']
     log_dataframe_brief.dataframe(
         log[:10],
         column_config={
@@ -123,6 +123,7 @@ def update_log_dataframe_list():
 
 
 def update_behavior_bar_large():
+    log = st.session_state['log']
     if log.empty or log.loc[0, '행동'] == NONE:
         behavior_bar_large.info(f'행동이 감지되지 않았습니다.')
     elif log.loc[0,'행동'] in st.session_state['noti_filter']:
@@ -132,6 +133,7 @@ def update_behavior_bar_large():
 
 
 def update_behavior_bar_small():
+    log = st.session_state['log']
     if log.empty or log.loc[0, '행동'] == NONE:
         behavior_bar_small.info(f'🐶 {NONE if log.empty else log.loc[0,'행동']}')
     elif log.loc[0, '행동'] in st.session_state['noti_filter']:
@@ -164,7 +166,8 @@ def add_log(time, behavior, image):
     else:
         st.session_state['reset_noti'] = 0
         st.session_state['play_noti'] = False
-    # on_add_log()
+    print(st.session_state['log'])
+    on_add_log()
     
 def on_add_log():
     update_log_dataframe_brief()
@@ -175,3 +178,10 @@ def on_add_log():
 if st.button(label='테스트', key='1'):
     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
     add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
+    
+    
+import time
+while True:
+    behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
+    add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
+    time.sleep(1)
