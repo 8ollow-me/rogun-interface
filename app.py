@@ -1,10 +1,11 @@
+import os
 import base64
-from io import BytesIO
 import pandas as pd
-from datetime import datetime
-from random import randint
-from PIL import Image
 import streamlit as st
+from io import BytesIO
+from PIL import Image
+from random import randint
+from datetime import datetime
 
 NONE = '행동 없음'
 BEHAVIORS = [
@@ -40,11 +41,26 @@ def image_to_base64(filepath: str) -> str:
         return ""
 
 
+def load_logs():
+    dataframes = []
+    for filename in os.listdir('logs/'):
+        if filename.endswith('.csv'):
+            dataframes.append(pd.read_csv(f'logs/{filename}'))
+    if not dataframes:
+        return pd.DataFrame(columns=['날짜', '시간', '행동', '캡쳐'])
+    df = pd.concat(dataframes[::-1])
+    df['datetime'] = df['날짜'].add([' '] * len(df)).add(df['시간'])
+    df['datetime'] = pd.to_datetime(df['datetime'])
+    df['날짜'] = df['datetime'].apply(datetime.date)
+    df['시간'] = df['datetime'].apply(datetime.time)
+    return df.drop(columns=['datetime'])
+
+
 # =========
 # 세션 상태
 # =========
 if 'log' not in st.session_state:
-    st.session_state.log = pd.DataFrame(columns=['날짜', '시간', '행동', '캡쳐'])
+    st.session_state.log = load_logs()
 if 'behavior' not in st.session_state:
     st.session_state.behavior = NONE
 if 'search_filter' not in st.session_state:
@@ -70,7 +86,6 @@ with tab_overview:
         st.markdown('### 최근에 감지된 활동')
         log_dataframe_brief = st.empty()
         behavior_bar_large = st.empty()
-    test = col2
 
 with tab_logs:
     st.markdown('### 전체 활동 기록')
@@ -86,7 +101,7 @@ with tab_logs:
                 placeholder='특정 행동을 검색하세요.',
                 label_visibility='collapsed'
             )
-        log_dataframe_list = st.empty()
+        log_dataframe_list = st.container()
 
     
 with tab_noti:
@@ -126,7 +141,7 @@ def update_log_dataframe_list():
     is_first_group = True
     has_no_data = True
     
-    with log_dataframe_list:
+    with log_dataframe_list.container():
         for group in list(groups)[::-1]:
             date, df = group
             if st.session_state.search_filter:
@@ -150,23 +165,23 @@ def update_log_dataframe_list():
 
 
 def update_behavior_bar_large():
-    log = st.session_state.log
-    if log.empty or log.loc[0, '행동'] == NONE:
+    behavior = st.session_state.behavior
+    if behavior == NONE:
         behavior_bar_large.info(f'행동이 감지되지 않았습니다.')
-    elif log.loc[0,'행동'] in st.session_state.noti_filter:
-        behavior_bar_large.warning(f'🔔 행동이 감지됐습니다: **{log.loc[0,'행동']}**')
-    elif log.loc[0,'행동'] != NONE:
-        behavior_bar_large.info(f'행동이 감지됐습니다: **{log.loc[0,'행동']}**')
+    elif behavior in st.session_state.noti_filter:
+        behavior_bar_large.warning(f'🔔 행동이 감지됐습니다: **{behavior}**')
+    else:
+        behavior_bar_large.info(f'행동이 감지됐습니다: **{behavior}**')
 
 
 def update_behavior_bar_small():
-    log = st.session_state.log
-    if log.empty or log.loc[0, '행동'] == NONE:
-        behavior_bar_small.info(f'🐶 {NONE if log.empty else log.loc[0,'행동']}')
-    elif log.loc[0, '행동'] in st.session_state.noti_filter:
-        behavior_bar_small.warning(f'🐕 **{log.loc[0,'행동']}**')
+    behavior = st.session_state.behavior
+    if behavior == NONE:
+        behavior_bar_small.info(f'🐶 {behavior}')
+    elif behavior in st.session_state.noti_filter:
+        behavior_bar_small.warning(f'🐕 **{behavior}**')
     else:
-        behavior_bar_small.info(f'🐕 {NONE if log.empty else log.loc[0,'행동']}')
+        behavior_bar_small.info(f'🐕 {behavior}')
 
 
 # ===============
@@ -204,8 +219,8 @@ def on_add_log():
 # ===========
 # 테스트 코드
 # ===========
-import time
-while True:
-    behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state.behavior == NONE else NONE
-    add_log(datetime.now(), behavior, 'C:\\Projects\\rogun_interface\\images\\rogun.png')
-    time.sleep(5)
+# import time
+# while True:
+#     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state.behavior == NONE else NONE
+#     add_log(datetime.now(), behavior, 'C:\\Projects\\rogun_interface\\images\\rogun.png')
+#     time.sleep(5)
