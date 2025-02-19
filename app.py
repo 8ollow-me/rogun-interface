@@ -1,11 +1,11 @@
 import sys
-import beepy
 import threading
 import pandas as pd
 from PIL import Image
-import streamlit as st
 from datetime import datetime
 from random import randint
+import streamlit as st
+from streamlit_javascript import st_javascript as stjs
 
 NONE = '행동 없음'
 BEHAVIORS = [
@@ -34,21 +34,26 @@ if 'search_filter' not in st.session_state:
     st.session_state['search_filter'] = []
 if 'noti_filter' not in st.session_state:
     st.session_state['noti_filter'] = []
+if 'play_noti' not in st.session_state:
+    st.session_state['play_noti'] = False
+if 'reset_noti' not in st.session_state:
+    st.session_state['reset_noti'] = 0
 
 
 # 이벤트
-def playsound():
-    # beepy.beep('coin')
-    pass
-
-
 def add_log(time, behavior, image):
     st.session_state['log'] = pd.concat(
         [get_row(time, behavior, image), st.session_state['log']],
         ignore_index=True
     )
-    threading.Thread(target=playsound, daemon=True).start()
-
+    st.session_state['behavior'] = behavior
+    if behavior in st.session_state['noti_filter']:
+        st.session_state['reset_noti'] = 0
+        st.session_state['play_noti'] = True
+    else:
+        st.session_state['reset_noti'] = 0
+        st.session_state['play_noti'] = False
+    st.rerun()
 
 # 뷰
 st.set_page_config(layout="wide")
@@ -126,9 +131,9 @@ with tab_noti:
         default=st.session_state['noti'],
         placeholder='행동을 선택하세요.'
     )
+    with st.expander('알림음 설정'):
+        st.audio('resources/coin.mp3', start_time=st.session_state['reset_noti'], autoplay=st.session_state['play_noti'])
     
 if st.button(label='테스트', key='1'):
     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
     add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
-    st.session_state['behavior'] = behavior
-    st.rerun()
