@@ -136,7 +136,14 @@ def update_log_dataframe_list():
             has_no_data = False
             date = date.strftime(r'%Y년 %m월 %d일')
             with st.expander(f'{date} ({len(df)})', expanded=is_first_group):
-                st.dataframe(df.drop(columns=['날짜']), use_container_width=True, hide_index=True)
+                st.dataframe(
+                    df.drop(columns=['날짜']), 
+                    column_config={
+                        "캡쳐": st.column_config.ImageColumn("캡쳐")
+                    },
+                    use_container_width=True, 
+                    hide_index=True
+                )
             is_first_group = False
         if has_no_data:
             st.caption('행동 기록이 없습니다.')
