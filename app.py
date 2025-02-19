@@ -1,15 +1,12 @@
-import os
-import cv2
-import base64
+import sys
 import pandas as pd
+from PIL import Image
 import streamlit as st
 from datetime import datetime
 from random import randint
-from PIL import Image
-
-# 폴더 생성
-IMAGE_FOLDER = "images"
-os.makedirs(IMAGE_FOLDER, exist_ok=True)
+import base64
+from io import BytesIO
+import os
 
 NONE = '행동 없음'
 BEHAVIORS = [
@@ -18,58 +15,72 @@ BEHAVIORS = [
     "TAILLOW", "TURN", "WALKRUN"
 ]
 
-def get_image_base64(image_path):
-    """이미지를 base64로 인코딩"""
-    with open(image_path, "rb") as img_file:
-        encoded_string = base64.b64encode(img_file.read()).decode()
-        return f"data:image/jpeg;base64,{encoded_string}"
+# 이미지 디렉토리
+IMAGE_DIR = os.path.abspath('images')  # 절대 경로로 변경
 
-def capture_image():
-    """웹캠에서 이미지를 캡처하고 images 폴더에 저장"""
-    cap = cv2.VideoCapture(0)  # 웹캠 열기
-    ret, frame = cap.read()  # 한 프레임 캡처
-    cap.release()  # 웹캠 해제
+def get_last_image():
+    image_path = os.path.join(IMAGE_DIR, '강아지3.jpg')
+    if not os.path.exists(image_path):
+        st.error(f"Image file not found: {image_path}")
+    return image_path
 
-    if ret:
-        filename = f"{IMAGE_FOLDER}/capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-        cv2.imwrite(filename, frame)  # 이미지 저장
-        return filename
-    else:
-        st.error("📷 캡처 실패! 웹캠을 확인하세요.")
-        return None
+# 이미지 파일을 base64로 변환
+def image_file_to_base64(filepath: str) -> str:
+    try:
+        with open(filepath, "rb") as f:
+            image = Image.open(f)
+            buffer = BytesIO()
+            image.save(buffer, format="PNG")
+            b64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            return f"data:image/png;base64,{b64_data}"
+    except Exception as e:
+        st.error(f"Error converting image: {e}")
+        return ""
 
-def get_row(time: datetime, behavior: str, image_path: str):
-    """데이터프레임에 새로운 행 추가"""
-    return pd.DataFrame({
-        '날짜': [time.strftime('%Y-%m-%d')],
-        '시간': [time.strftime('%H:%M:%S')],
-        '행동': [behavior],
-        '캡쳐': [get_image_base64(image_path)]
-    })
+def get_row(time: datetime, behavior: str, image: str): 
+    return pd.DataFrame({'날짜': [time.date()], '시간': [time.time()], '행동': [behavior], '캡쳐': [image]})
 
-# 세션 데이터 초기화
+# Session state initialization
 if 'log' not in st.session_state:
     st.session_state['log'] = pd.DataFrame(columns=['날짜', '시간', '행동', '캡쳐'])
+if 'behavior_log' not in st.session_state:
+    st.session_state['behavior_log'] = pd.DataFrame(columns=['시간', '행동'])  # 🔹 최근 감지된 동작 로그
 if 'noti' not in st.session_state:
     st.session_state['noti'] = []
 if 'behavior' not in st.session_state:
     st.session_state['behavior'] = NONE
 if 'search_filter' not in st.session_state:
     st.session_state['search_filter'] = []
+if 'noti_filter' not in st.session_state:
+    st.session_state['noti_filter'] = []
 
-# 메인 UI
+# Add a new log entry.
+def add_log(time, behavior, image):
+    st.session_state['log'] = pd.concat(
+        [get_row(time, behavior, image), st.session_state['log']],
+        ignore_index=True
+    )
+
+    # 🔹 최근 감지된 동작 로그 추가
+    new_behavior_log = pd.DataFrame({'시간': [time.strftime("%H:%M:%S")], '행동': [behavior]})
+    st.session_state['behavior_log'] = pd.concat(
+        [new_behavior_log, st.session_state['behavior_log']],
+        ignore_index=True
+    )
+
 st.set_page_config(layout="wide")
     
-tab_overview, tab_logs, tab_noti = st.tabs(['🔴 실시간 영상', '📋 전체 활동 기록',  '🔔 알림 설정'])
+tab_overview, tab_logs, tab_noti = st.tabs(['🔴 실시간 영상', '📋 전체 활동 기록', '🔔 알림 설정'])
 
 with tab_overview:
     col1, col2 = st.columns([25, 10], vertical_alignment='top')
     with col1:
-        st.image(image='강아지3.jpg', use_column_width=True)
+        st.image(image=get_last_image(), use_container_width=True)
+
     with col2:
         st.markdown('### 최근에 감지된 활동')
         st.dataframe(
-            st.session_state['log'].head(10),
+            st.session_state['log'],
             column_config={
                 "날짜": st.column_config.TextColumn("날짜"),
                 "시간": st.column_config.TextColumn("시간"),
@@ -81,14 +92,24 @@ with tab_overview:
                 )
             },
             hide_index=True,
-            use_container_width=True
+            use_container_width=True,
+            height=400
+        )
+
+        # 🔹 최근 감지된 동작 리스트 (스크롤 가능)
+        st.markdown("#### 최근 감지된 동작")
+        st.dataframe(
+            st.session_state['behavior_log'],  # 동작 리스트 추가
+            hide_index=True,
+            use_container_width=True,
+            height=200  # 🔹 스크롤 가능하도록 설정
         )
 
 with tab_logs:
     st.markdown('### 전체 활동 기록')
     col1, col2 = st.columns([1, 4], vertical_alignment='top')
     with col1:
-        st.image(image='강아지3.jpg', use_container_width=True)
+        st.image(image=get_last_image(), use_container_width=True)
     with col2:
         with st.expander('검색 필터'):
             st.session_state['search_filter'] = st.multiselect(
@@ -99,12 +120,12 @@ with tab_logs:
                 label_visibility='collapsed'
             )
 
-        filtered_log = st.session_state['log']
+        log = st.session_state['log']
         if st.session_state['search_filter']:
-            filtered_log = filtered_log[filtered_log['행동'].isin(st.session_state['search_filter'])]
+            log = log[log['행동'].isin(st.session_state['search_filter'])]
 
         st.dataframe(
-            filtered_log,
+            log,
             column_config={
                 "날짜": st.column_config.TextColumn("날짜"),
                 "시간": st.column_config.TextColumn("시간"),
@@ -116,27 +137,38 @@ with tab_logs:
                 )
             },
             hide_index=True,
-            use_container_width=True
+            use_container_width=True,
+            height=400
         )
 
 with tab_noti:
     st.markdown('### 알림 설정')
-    st.session_state['noti'] = st.multiselect(
+    st.session_state['noti_filter'] = st.multiselect(
         label='반려견이 특정 행동을 했을 때 알림을 받습니다.',
         options=BEHAVIORS,
         default=st.session_state['noti'],
         placeholder='행동을 선택하세요.'
     )
 
-# 📸 캡처 및 테스트 버튼
-if st.button(label='📸 캡처 & 테스트', key='1'):
-    try:
-        image_path = capture_image()  # 웹캠에서 캡처 후 저장
-        if image_path:
-            behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
-            new_row = get_row(datetime.now(), behavior, image_path)
-            st.session_state['log'] = pd.concat([new_row, st.session_state['log']], ignore_index=True)
-            st.session_state['behavior'] = behavior
-            st.rerun()
-    except Exception as e:
-        st.error(f"오류 발생: {e}")
+if st.button(label='테스트', key='1'):
+    # 랜덤 행동 선택: if current behavior is '행동 없음', choose random; else, reset to '행동 없음'
+    behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
+    
+    # Convert the local image file to a base64 string.
+    image_b64 = image_file_to_base64(get_last_image())
+    add_log(datetime.now(), behavior, image_b64)
+    st.session_state['behavior'] = behavior
+
+    # 알림 설정에 있으면 소리 알림
+    if behavior in st.session_state['noti_filter']:
+        alert_sound_url = "https://www.soundjay.com/buttons/sounds/button-12.mp3"
+        st.markdown(
+            f"""
+            <audio autoplay>
+                <source src="{alert_sound_url}" type="audio/mpeg">
+            </audio>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    st.rerun()
