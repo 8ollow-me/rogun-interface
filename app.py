@@ -1,6 +1,9 @@
+import base64
+from io import BytesIO
 import pandas as pd
 from datetime import datetime
 from random import randint
+from PIL import Image
 import streamlit as st
 
 NONE = '행동 없음'
@@ -11,16 +14,30 @@ BEHAVIORS = [
 ]
 BEEPS = {
     '알림음 끄기': '',
-    '기본 알림음': 'https://www.soundjay.com/buttons/sounds/beep-07a.mp3'
+    '기본 알림음': 'https://www.soundjay.com/buttons/sounds/beep-07a.mp3',
+    '멍멍': 'https://t1.daumcdn.net/cfile/tistory/99CC98395CE6F54B0A'
 }
 
 
 def get_last_image():
-    return 'images/rogun.png'
+    return image_to_base64('images/rogun.png')
 
 
 def get_row(time: datetime.date, behavior: str, image: str): 
     return pd.DataFrame({'날짜': [time.date()], '시간': [time.time()], '행동': [behavior], '캡쳐': [image]})
+
+
+def image_to_base64(filepath: str) -> str:
+    try:
+        with open(filepath, "rb") as f:
+            image = Image.open(f)
+            buffer = BytesIO()
+            image.save(buffer, format="PNG")
+            b64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            return f"data:image/png;base64,{b64_data}"
+    except Exception as e:
+        st.error(f"Error converting image: {e}")
+        return ""
 
 
 # =========
@@ -159,7 +176,7 @@ update_behavior_bar_small()
 # ======
 def add_log(time, behavior, image):
     st.session_state.log = pd.concat(
-        [get_row(time, behavior, image), st.session_state.log],
+        [get_row(time, behavior, image_to_base64(image)), st.session_state.log],
         ignore_index=True
     )
     st.session_state.behavior = behavior
@@ -183,5 +200,5 @@ def on_add_log():
 import time
 while True:
     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state.behavior == NONE else NONE
-    add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
+    add_log(datetime.now(), behavior, 'C:\\Projects\\rogun_interface\\images\\rogun.png')
     time.sleep(5)
