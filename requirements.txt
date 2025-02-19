@@ -1,1 +1,1 @@
-gradio
+streamlit~=1.42.1
