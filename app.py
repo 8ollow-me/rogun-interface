@@ -180,13 +180,12 @@ def on_add_log():
     update_behavior_bar_large()
     update_behavior_bar_small()
     
-if st.button(label='테스트', key='1'):
-    behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
-    add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
     
-    
+# ===========
+# 테스트 코드
+# ===========    
 import time
 while True:
-    behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state['behavior'] == NONE else NONE
+    behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state.behavior == NONE else NONE
     add_log(datetime.now(), behavior, 'G:\\zer0ken\\rogun-interface\\images\\rogun.png')
     time.sleep(5)
