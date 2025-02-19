@@ -27,17 +27,15 @@ def get_row(time: datetime.date, behavior: str, image: str):
 # 세션 상태
 # =========
 if 'log' not in st.session_state:
-    st.session_state['log'] = pd.DataFrame(columns=['날짜', '시간', '행동', '캡쳐'])
-if 'noti' not in st.session_state:
-    st.session_state['noti'] = []
+    st.session_state.log = pd.DataFrame(columns=['날짜', '시간', '행동', '캡쳐'])
 if 'behavior' not in st.session_state:
-    st.session_state['behavior'] = NONE
+    st.session_state.behavior = NONE
 if 'search_filter' not in st.session_state:
-    st.session_state['search_filter'] = []
+    st.session_state.search_filter = []
 if 'noti_filter' not in st.session_state:
-    st.session_state['noti_filter'] = []
+    st.session_state.noti_filter = []
 if 'beep' not in st.session_state:
-    st.session_state['beep'] = list(BEEPS.keys())[0]
+    st.session_state.beep = list(BEEPS.keys())[0]
 
 
 # =======
@@ -65,10 +63,9 @@ with tab_logs:
         behavior_bar_small = st.empty()
     with col2:
         with st.expander('검색 필터'):
-            st.session_state['search_filter'] = st.multiselect(
+            st.session_state.search_filter = st.multiselect(
                 label='검색 필터',
                 options= [NONE] + BEHAVIORS,
-                default=st.session_state['noti'],
                 placeholder='특정 행동을 검색하세요.',
                 label_visibility='collapsed'
             )
@@ -77,14 +74,13 @@ with tab_logs:
     
 with tab_noti:
     st.markdown('### 알림 설정')
-    st.session_state['noti_filter'] = st.multiselect(
+    st.session_state.noti_filter = st.multiselect(
         label='반려견이 특정 행동을 했을 때 알림을 받습니다.',
         options=BEHAVIORS,
-        default=st.session_state['noti'],
-        placeholder='행동을 선택하세요.'
+        placeholder='알림을 받을 행동을 선택하세요.'
     )
     with st.expander('알림음 설정'):
-        st.session_state['beep'] = st.radio(
+        st.session_state.beep = st.radio(
             label='알림음 설정', 
             options=list(BEEPS.keys()),
             index=1,
@@ -96,7 +92,7 @@ with tab_noti:
 # 컴포넌트 갱신 함수
 # ==================
 def update_log_dataframe_brief():
-    log = st.session_state['log']
+    log = st.session_state.log
     log_dataframe_brief.dataframe(
         log[:10],
         column_config={
@@ -108,7 +104,7 @@ def update_log_dataframe_brief():
 
 
 def update_log_dataframe_list():
-    log = st.session_state['log']
+    log = st.session_state.log
     groups = log.groupby('날짜')
     is_first_group = True
     has_no_data = True
@@ -116,8 +112,8 @@ def update_log_dataframe_list():
     with log_dataframe_list:
         for group in list(groups)[::-1]:
             date, df = group
-            if st.session_state['search_filter']:
-                df = df[df['행동'].isin(st.session_state['search_filter'])]
+            if st.session_state.search_filter:
+                df = df[df['행동'].isin(st.session_state.search_filter)]
                 if df.empty:
                     continue
             has_no_data = False
@@ -130,20 +126,20 @@ def update_log_dataframe_list():
 
 
 def update_behavior_bar_large():
-    log = st.session_state['log']
+    log = st.session_state.log
     if log.empty or log.loc[0, '행동'] == NONE:
         behavior_bar_large.info(f'행동이 감지되지 않았습니다.')
-    elif log.loc[0,'행동'] in st.session_state['noti_filter']:
+    elif log.loc[0,'행동'] in st.session_state.noti_filter:
         behavior_bar_large.warning(f'🔔 행동이 감지됐습니다: **{log.loc[0,'행동']}**')
     elif log.loc[0,'행동'] != NONE:
         behavior_bar_large.info(f'행동이 감지됐습니다: **{log.loc[0,'행동']}**')
 
 
 def update_behavior_bar_small():
-    log = st.session_state['log']
+    log = st.session_state.log
     if log.empty or log.loc[0, '행동'] == NONE:
         behavior_bar_small.info(f'🐶 {NONE if log.empty else log.loc[0,'행동']}')
-    elif log.loc[0, '행동'] in st.session_state['noti_filter']:
+    elif log.loc[0, '행동'] in st.session_state.noti_filter:
         behavior_bar_small.warning(f'🐕 **{log.loc[0,'행동']}**')
     else:
         behavior_bar_small.info(f'🐕 {NONE if log.empty else log.loc[0,'행동']}')
@@ -162,14 +158,14 @@ update_behavior_bar_small()
 # 이벤트
 # ======
 def add_log(time, behavior, image):
-    st.session_state['log'] = pd.concat(
-        [get_row(time, behavior, image), st.session_state['log']],
+    st.session_state.log = pd.concat(
+        [get_row(time, behavior, image), st.session_state.log],
         ignore_index=True
     )
-    st.session_state['behavior'] = behavior
-    if behavior in st.session_state['noti_filter']:
+    st.session_state.behavior = behavior
+    if behavior in st.session_state.noti_filter:
         st.markdown(
-            f'<audio autoplay><source src="{BEEPS[st.session_state['beep']]}" type="audio/mpeg"></audio>',
+            f'<audio autoplay><source src="{BEEPS[st.session_state.beep]}" type="audio/mpeg"></audio>',
             unsafe_allow_html=True
         )
     on_add_log()
@@ -179,11 +175,11 @@ def on_add_log():
     update_log_dataframe_list()
     update_behavior_bar_large()
     update_behavior_bar_small()
-    
-    
+
+
 # ===========
 # 테스트 코드
-# ===========    
+# ===========
 import time
 while True:
     behavior = BEHAVIORS[randint(0, len(BEHAVIORS) - 1)] if st.session_state.behavior == NONE else NONE
